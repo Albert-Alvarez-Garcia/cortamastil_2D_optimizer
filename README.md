@@ -9,6 +9,9 @@ El proyecto está construido como un Single-Page Application (SPA) puro. Todo el
 
 El panel principal unifica la configuración paramétrica, el despiece tipado, la simulación interactiva y el reporte de conflictos físicos en tiempo real.
 
+<img width="813" height="424" alt="imagen" src="https://github.com/user-attachments/assets/3b16b9e4-5eda-4144-aad3-99162374bcd4" />
+
+
 ✨ Características Principales
 
 ⚡ Algoritmo de Nesting Optimizado: Implementa una variante del empaquetado voraz (Greedy Bin Packing) en $O(n \log n)$ que prioriza la colocación de piezas por área decreciente con soporte para rotación dinámica.
