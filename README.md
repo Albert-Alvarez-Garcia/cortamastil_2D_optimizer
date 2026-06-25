@@ -41,7 +41,7 @@ Al ser un desarrollo estático autocontenido, no necesitas procesos de compilaci
 
 Clona este repositorio en tu máquina:
 
-git clone https://github.com/Albert-Alvarez-Garcia/cortamastil_2D_optimize.git
+git clone https://github.com/Albert-Alvarez-Garcia/cortamastil_2D_optimizer.git
 
 
 Abre el archivo index.html en tu navegador web preferido (Chrome, Firefox, Safari, Edge).
