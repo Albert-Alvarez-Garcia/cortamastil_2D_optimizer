@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CortaMástil - Optimizador de Bricolaje</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: monospace; }
+    
+    @media print {
+      body { background: white !important; color: black !important; padding: 0 !important; }
+      header, section:nth-child(1), section:nth-child(2), #selector-tableros-container, #reporte-contenedor, button, .no-print {
+        display: none !important;
+      }
+      main { border: none !important; box-shadow: none !important; background: transparent !important; max-w: 100% !important; padding: 0 !important; }
+      .grid { display: block !important; }
+      #seccion-impresion-bloque { display: block !important; }
+      .pagina-tablero-print { page-break-after: always; break-after: page; padding: 20px 0; border-bottom: 2px dashed #000; }
+      .canvas-print-wrapper { max-width: 100% !important; border: 1px solid #000 !important; }
+    }
+  </style>
+</head>
+<body class="bg-[#121212] text-[#e0e0e0] p-6 min-h-screen">
+
+  <main class="max-w-7xl mx-auto border-4 border-[#333333] bg-[#1a1a1a] p-6 shadow-[8px_8px_0px_0px_#222]">
+    
+    <header class="border-b-4 border-[#333333] pb-4 mb-6">
+      <h1 class="text-3xl font-black tracking-tighter text-white">_CORTAMÁSTIL // OPTIMIZADOR 2D</h1>
+      <p class="text-sm text-gray-400 mt-1">Corta tus tableros sin dejarte los sesos ni romper el maletero.</p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- COLUMNA 1: PARÁMETROS -->
+      <section class="border-2 border-[#333333] p-4 bg-[#222222]">
+        <h2 class="text-lg font-bold uppercase tracking-wider text-amber-400 mb-4 border-b border-[#333333] pb-2">// 1. Parámetros</h2>
+        
+        <div class="mb-4">
+          <label class="block text-xs uppercase font-bold text-gray-400 mb-1">Tablero Base (mm)</label>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="number" id="tablero-w" placeholder="Ancho (X)" class="bg-[#121212] border-2 border-[#444] p-2 text-white focus:border-amber-400 outline-none" value="2440">
+            <input type="number" id="tablero-h" placeholder="Alto (Y)" class="bg-[#121212] border-2 border-[#444] p-2 text-white focus:border-amber-400 outline-none" value="1220">
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-xs uppercase font-bold text-gray-400 mb-1">Herramienta de Corte (Merma)</label>
+          <select id="herramienta-merma" class="w-full bg-[#121212] border-2 border-[#444] p-2 text-white focus:border-amber-400 outline-none appearance-none rounded-none">
+            <option value="1.5">Caladora (1.5 mm)</option>
+            <option value="2.0">Mini Radial (2.0 mm)</option>
+            <option value="3.0" selected>Sierra Doméstica (3.0 mm)</option>
+            <option value="4.0">Sierra Industrial (4.0 mm)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs uppercase font-bold text-gray-400 mb-1">Límites de Coche (mm)</label>
+          <div class="grid grid-cols-3 gap-2 mb-2 text-center">
+            <div>
+              <span class="text-[9px] text-gray-500 uppercase font-bold block mb-0.5">Ancho</span>
+              <input type="number" id="coche-w" class="w-full bg-[#121212] border-2 border-[#444] p-1.5 text-xs text-white text-center focus:border-amber-400 outline-none" value="1000">
+            </div>
+            <div>
+              <span class="text-[9px] text-gray-500 uppercase font-bold block mb-0.5">Alto</span>
+              <input type="number" id="coche-h" class="w-full bg-[#121212] border-2 border-[#444] p-1.5 text-xs text-white text-center focus:border-amber-400 outline-none" value="800">
+            </div>
+            <div>
+              <span class="text-[9px] text-gray-500 uppercase font-bold block mb-0.5">Largo</span>
+              <input type="number" id="coche-l" class="w-full bg-[#121212] border-2 border-[#444] p-1.5 text-xs text-white text-center focus:border-amber-400 outline-none" value="1500">
+            </div>
+          </div>
+          <span class="text-[10px] text-gray-500 block leading-tight">Las piezas que superen estas dimensiones activarán la alerta de transporte.</span>
+        </div>
+      </section>
+
+      <!-- COLUMNA 2: GESTIÓN DE PIEZAS -->
+      <section class="border-2 border-[#333333] p-4 bg-[#222222] flex flex-col justify-between">
+        <div>
+          <h2 class="text-lg font-bold uppercase tracking-wider text-amber-400 mb-4 border-b border-[#333333] pb-2">// 2. Despiece</h2>
+          
+          <div class="grid grid-cols-1 gap-1 mb-2">
+            <input type="text" id="input-name" placeholder="Nombre (ej. Lateral mueble)" class="bg-[#121212] border-2 border-[#444] p-1 text-xs text-white outline-none">
+          </div>
+          <div class="grid grid-cols-4 gap-1 mb-4">
+            <input type="number" id="input-w" placeholder="Ancho" class="bg-[#121212] border-2 border-[#444] p-1 text-xs text-white outline-none">
+            <input type="number" id="input-h" placeholder="Alto" class="bg-[#121212] border-2 border-[#444] p-1 text-xs text-white outline-none">
+            <input type="number" id="input-qty" placeholder="Cant." class="bg-[#121212] border-2 border-[#444] p-1 text-xs text-white outline-none" value="1">
+            <div class="flex items-center justify-center bg-[#121212] border-2 border-[#444] px-1">
+              <label class="text-[10px] text-gray-400 mr-1 select-none">Rotar</label>
+              <input type="checkbox" id="input-rot" checked class="accent-amber-500">
+            </div>
+          </div>
+          <button onclick="agregarPieza()" class="w-full bg-amber-500 text-black font-black text-xs uppercase p-2 hover:bg-amber-400 active:translate-y-0.5 transition-transform mb-4">
+            + Añadir Pieza al Listado
+          </button>
+
+          <div class="overflow-y-auto max-h-[160px] border border-[#333] mb-4">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-[#121212] text-gray-400 uppercase">
+                <tr>
+                  <th class="p-2">Pieza / Dim (mm)</th>
+                  <th class="p-2 text-center">Cant</th>
+                  <th class="p-2 text-center">Rot</th>
+                  <th class="p-2"></th>
+                </tr>
+              </thead>
+              <tbody id="lista-piezas-body" class="divide-y divide-[#333]">
+              </tbody>
+            </table>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 border-t border-[#333] pt-3 no-print">
+            <button onclick="exportarProyectoJSON()" class="bg-[#2a2a2a] border border-[#444] text-xs text-gray-300 p-2 uppercase hover:bg-[#333] hover:text-white transition-colors">
+              💾 Guardar JSON
+            </button>
+            <label class="bg-[#2a2a2a] border border-[#444] text-xs text-gray-300 p-2 uppercase hover:bg-[#333] hover:text-white transition-colors text-center cursor-pointer block">
+              📂 Cargar JSON
+              <input type="file" id="input-archivo-json" accept=".json" onchange="importarProyectoJSON(event)" class="hidden">
+            </label>
+          </div>
+        </div>
+
+        <button onclick="procesarOptimizacion()" class="w-full bg-white text-black font-black text-lg p-3 uppercase tracking-wider hover:bg-gray-200 active:translate-y-0.5 transition-transform mt-4 border-2 border-black shadow-[4px_4px_0px_0px_#444]">
+          [ OPTIMIZAR CORTE ]
+        </button>
+      </section>
+
+      <!-- COLUMNA 3: MAPA Y REPORT -->
+      <section class="border-2 border-[#333333] p-4 bg-[#222222] flex flex-col justify-between">
+        <div>
+          <h2 class="text-lg font-bold uppercase tracking-wider text-amber-400 mb-4 border-b border-[#333333] pb-2">// 3. Mapa y Reporte</h2>
+          
+          <div class="w-full bg-[#121212] border-2 border-[#444] aspect-[2/1] flex items-center justify-center relative overflow-hidden mb-2">
+            <canvas id="canvas-tablero" class="w-full h-full bg-[#151515]"></canvas>
+            <div id="canvas-placeholder" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center p-4">
+              <span class="text-xs text-gray-500 font-bold uppercase">[ Canvas listo ]</span>
+            </div>
+          </div>
+
+          <div id="selector-tableros-container" class="flex justify-between items-center bg-[#121212] p-1 border border-[#333] mb-4 hidden">
+            <button onclick="cambiarTablero(-1)" class="bg-[#333] text-white px-2 py-0.5 text-xs font-bold hover:bg-[#444]">&lt; Prev</button>
+            <span id="label-tablero-actual" class="text-xs font-bold text-amber-400">TABLERO 1 / 1</span>
+            <button onclick="cambiarTablero(1)" class="bg-[#333] text-white px-2 py-0.5 text-xs font-bold hover:bg-[#444]">Sig &gt;</button>
+          </div>
+
+          <div class="border border-[#333] bg-[#1a1a1a] p-3 text-xs h-[100px] overflow-y-auto mb-2" id="reporte-contenedor">
+            <span class="text-gray-500 font-bold uppercase block mb-1">> REPORTE DE EJECUCIÓN:</span>
+            <p class="text-gray-400">Introduce piezas y haz clic en optimizar para generar el desglose técnico.</p>
+          </div>
+
+          <button id="btn-imprimir" onclick="imprimirInforme()" class="w-full bg-emerald-600 text-white font-bold text-xs uppercase p-2 hover:bg-emerald-500 active:translate-y-0.5 transition-transform hidden">
+            📋 Generar Informe (PDF / Imprimir)
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mt-4 text-xs bg-[#1a1a1a] p-2 border border-[#333]">
+          <div><span class="text-gray-500">Eficiencia Med:</span> <span id="stat-eficiencia" class="text-emerald-400 font-bold">0.0%</span></div>
+          <div><span class="text-gray-500">Merma total:</span> <span id="stat-merma" class="text-white">0 mm</span></div>
+          <div><span class="text-gray-500">Total Tableros:</span> <span id="stat-tableros" class="text-amber-400 font-bold">0</span></div>
+          <div><span class="text-gray-500">Alertas coche:</span> <span id="stat-alertas" class="text-white">0</span></div>
+        </div>
+      </section>
+
+    </div>
+
+    <div id="seccion-impresion-bloque" class="hidden mt-8 pt-6 border-t-4 border-gray-700"></div>
+
+  </main>
+
+  <script>
+    let listadoPiezas = [];
+    let contadorPiezas = 1;
+    let tablerosSolucionados = []; 
+    let indiceTableroActual = 0;
+
+    const inputName = document.getElementById('input-name');
+    const inputW = document.getElementById('input-w');
+    const inputH = document.getElementById('input-h');
+    const inputQty = document.getElementById('input-qty');
+    const inputRot = document.getElementById('input-rot');
+    const listaPiezasBody = document.getElementById('lista-piezas-body');
+    const reporteContenedor = document.getElementById('reporte-contenedor');
+
+    renderLista();
+
+    function agregarPieza() {
+      const w = parseInt(inputW.value);
+      const h = parseInt(inputH.value);
+      const qty = parseInt(inputQty.value);
+      const rot = inputRot.checked;
+      let name = inputName.value.trim();
+
+      if (isNaN(w) || isNaN(h) || isNaN(qty) || w <= 0 || h <= 0 || qty <= 0) {
+        alert("Por favor, introduce dimensiones y cantidades válidas.");
+        return;
+      }
+      if (!name) name = `Pieza ${contadorPiezas++}`;
+
+      listadoPiezas.push({ id: Date.now(), name, w, h, qty, rot });
+      inputName.value = ''; inputW.value = ''; inputH.value = ''; inputQty.value = '1'; inputRot.checked = true;
+      renderLista();
+    }
+
+    function eliminarPieza(id) {
+      listadoPiezas = listadoPiezas.filter(p => p.id !== id);
+      renderLista();
+    }
+
+    function renderLista() {
+      listaPiezasBody.innerHTML = '';
+      listadoPiezas.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-[#2a2a2a] transition-colors';
+        tr.innerHTML = `
+          <td class="p-2">
+            <div class="font-bold text-white">${p.name}</div>
+            <div class="text-[10px] text-gray-400">${p.w} x ${p.h} mm</div>
+          </td>
+          <td class="p-2 text-center font-bold text-amber-400">${p.qty}</td>
+          <td class="p-2 text-center">
+            <span class="${p.rot ? 'text-emerald-400' : 'text-red-500'} font-bold">${p.rot ? 'SÍ' : 'NO'}</span>
+          </td>
+          <td class="p-2 text-right">
+            <button onclick="eliminarPieza(${p.id})" class="text-red-500 hover:text-red-400 font-bold px-2">✕</button>
+          </td>
+        `;
+        listaPiezasBody.appendChild(tr);
+      });
+    }
+
+    function subdividirPieza(id) {
+      const pieza = listadoPiezas.find(p => p.id === id);
+      if (!pieza) return;
+      let nuevoW = pieza.w; let nuevoH = pieza.h;
+      if (pieza.w >= pieza.h) nuevoW = Math.floor(pieza.w / 2); else nuevoH = Math.floor(pieza.h / 2);
+
+      listadoPiezas = listadoPiezas.filter(p => p.id !== id);
+      listadoPiezas.push({ id: Date.now(), name: `${pieza.name} (Mitad A)`, w: nuevoW, h: nuevoH, qty: pieza.qty * 2, rot: pieza.rot });
+      renderLista();
+      procesarOptimizacion();
+    }
+
+    function exportarProyectoJSON() {
+      if (listadoPiezas.length === 0) {
+        alert("No hay piezas en el despiece para guardar.");
+        return;
+      }
+      
+      const estructuraProyecto = {
+        config: {
+          tableroW: parseInt(document.getElementById('tablero-w').value),
+          tableroH: parseInt(document.getElementById('tablero-h').value),
+          merma: parseFloat(document.getElementById('herramienta-merma').value),
+          cocheW: parseInt(document.getElementById('coche-w').value),
+          cocheH: parseInt(document.getElementById('coche-h').value),
+          cocheL: parseInt(document.getElementById('coche-l').value)
+        },
+        piezas: listadoPiezas
+      };
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(estructuraProyecto, null, 2));
+      const elementoDescarga = document.createElement('a');
+      elementoDescarga.setAttribute("href", dataStr);
+      elementoDescarga.setAttribute("download", `proyecto-corte-${Date.now()}.json`);
+      document.body.appendChild(elementoDescarga);
+      elementoDescarga.click();
+      elementoDescarga.remove();
+    }
+
+    function importarProyectoJSON(evento) {
+      const archivo = evento.target.files[0];
+      if (!archivo) return;
+
+      const lector = new FileReader();
+      lector.onload = function(e) {
+        try {
+          const proyectoCargado = JSON.parse(e.target.result);
+          
+          if (!proyectoCargado.config || !proyectoCargado.piezas) {
+            throw new Error("El archivo no tiene el formato técnico de CortaMástil.");
+          }
+
+          document.getElementById('tablero-w').value = parseInt(proyectoCargado.config.tableroW);
+          document.getElementById('tablero-h').value = parseInt(proyectoCargado.config.tableroH);
+          
+          const valorMerma = parseFloat(proyectoCargado.config.merma);
+          document.getElementById('herramienta-merma').value = isNaN(valorMerma) ? "3.0" : valorMerma.toFixed(1);
+          
+          document.getElementById('coche-w').value = parseInt(proyectoCargado.config.cocheW);
+          document.getElementById('coche-h').value = parseInt(proyectoCargado.config.cocheH);
+          document.getElementById('coche-l').value = parseInt(proyectoCargado.config.cocheL);
+
+          listadoPiezas = proyectoCargado.piezas.map(p => ({
+            id: p.id ? parseInt(p.id) : Date.now() + Math.random(),
+            name: p.name.toString(),
+            w: parseInt(p.w),
+            h: parseInt(p.h),
+            qty: parseInt(p.qty),
+            rot: p.rot === true || p.rot === "true"
+          }));
+
+          renderLista();
+          procesarOptimizacion();
+          evento.target.value = '';
+        } catch (err) {
+          alert("Error al procesar el JSON: " + err.message);
+        }
+      };
+      lector.readAsText(archivo);
+    }
+
+    function ejecutarAlgoritmoMultiCorte(tableroW, tableroH, merma) {
+      tablerosSolucionados = []; 
+      let piezasPorColocar = [];
+      
+      const tW = parseInt(tableroW);
+      const tH = parseInt(tableroH);
+      
+      let m = parseFloat(merma);
+      if (isNaN(m)) m = 3.0;
+
+      listadoPiezas.forEach(p => {
+        const anchoP = parseInt(p.w);
+        const altoP = parseInt(p.h);
+        const cantP = parseInt(p.qty);
+        const puedeRotar = (p.rot === true || p.rot === "true");
+
+        for (let i = 0; i < cantP; i++) {
+          piezasPorColocar.push({ 
+            name: p.name, 
+            w: anchoP, 
+            h: altoP, 
+            rot: puedeRotar, 
+            area: anchoP * altoP 
+          });
+        }
+      });
+
+      piezasPorColocar.sort((a, b) => b.area - a.area);
+
+      let piezaInviable = piezasPorColocar.find(p => 
+        (p.w > tW || p.h > tH) && (!p.rot || p.h > tW || p.w > tH)
+      );
+      if (piezaInviable) return false;
+
+      while (piezasPorColocar.length > 0) {
+        let piezasDeEsteTablero = [];
+        let espaciosVacios = [{ x: 0, y: 0, w: tW, h: tH }];
+        let indicesEliminar = [];
+
+        for (let j = 0; j < piezasPorColocar.length; j++) {
+          let pieza = piezasPorColocar[j];
+
+          for (let i = 0; i < espaciosVacios.length; i++) {
+            let espacio = espaciosVacios[i];
+            let encajaNormal = (pieza.w <= espacio.w && pieza.h <= espacio.h);
+            let encajaRotada = pieza.rot && (pieza.h <= espacio.w && pieza.w <= espacio.h);
+
+            if (encajaNormal || encajaRotada) {
+              let usarRotada = !encajaNormal && encajaRotada;
+              let anchoFinal = usarRotada ? pieza.h : pieza.w;
+              let altoFinal = usarRotada ? pieza.w : pieza.h;
+
+              piezasDeEsteTablero.push({ 
+                name: pieza.name, 
+                x: espacio.x, 
+                y: espacio.y, 
+                w: anchoFinal, 
+                h: altoFinal 
+              });
+              
+              espaciosVacios.splice(i, 1);
+
+              if (espacio.w - (anchoFinal + m) > 0) {
+                espaciosVacios.push({ 
+                  x: espacio.x + anchoFinal + m, 
+                  y: espacio.y, 
+                  w: espacio.w - (anchoFinal + m), 
+                  h: espacio.h
+                });
+              }
+              if (espacio.h - (altoFinal + m) > 0) {
+                espaciosVacios.push({ 
+                  x: espacio.x, 
+                  y: espacio.y + altoFinal + m, 
+                  w: anchoFinal, 
+                  h: espacio.h - (altoFinal + m) 
+                });
+              }
+
+              espaciosVacios.sort((a, b) => (a.w * a.h) - (b.w * b.h));
+              indicesEliminar.push(j);
+              break;
+            }
+          }
+        }
+
+        piezasPorColocar = piezasPorColocar.filter((_, idx) => !indicesEliminar.includes(idx));
+        tablerosSolucionados.push(piezasDeEsteTablero);
+      }
+      return true;
+    }
+
+    // PROCESADOR DE OPTIMIZACIÓN CORREGIDO (CON ALERTA DE COCHE RESTAURADA)
+    function procesarOptimizacion() {
+      if (listadoPiezas.length === 0) {
+        reporteContenedor.innerHTML = `<span class="text-red-500 font-bold">> ERROR: No hay piezas en el despiece.</span>`;
+        return;
+      }
+
+      const tableroW = parseInt(document.getElementById('tablero-w').value);
+      const tableroH = parseInt(document.getElementById('tablero-h').value);
+      const cocheW = parseInt(document.getElementById('coche-w').value);
+      const cocheH = parseInt(document.getElementById('coche-h').value);
+      const cocheL = parseInt(document.getElementById('coche-l').value);
+      
+      let mermaInput = document.getElementById('herramienta-merma').value;
+      let merma = parseFloat(mermaInput);
+      if (isNaN(merma)) merma = 3.0;
+
+      document.getElementById('canvas-placeholder').classList.add('hidden');
+      document.getElementById('btn-imprimir').classList.remove('hidden');
+      
+      let htmlReporte = `<span class="text-amber-400 font-bold block mb-1">> INICIANDO COMPROBACIÓN LOGÍSTICA...</span>`;
+      let alertasCoche = 0;
+
+      // COMPROBACIÓN FÍSICA PARA EL COCHE
+      listadoPiezas.forEach(p => {
+        const pW = parseInt(p.w);
+        const pH = parseInt(p.h);
+
+        // Evaluamos si la plancha de madera cabe en el maletero usando las 3 orientaciones 3D posibles
+        const cabe1 = (pW <= cocheW && pH <= cocheH) || (pH <= cocheW && pW <= cocheH);
+        const cabe2 = (pW <= cocheW && pH <= cocheL) || (pH <= cocheW && pW <= cocheL);
+        const cabe3 = (pW <= cocheH && pH <= cocheL) || (pH <= cocheH && pW <= cocheL);
+        const cabeEnCoche = cabe1 || cabe2 || cabe3;
+
+        if (!cabeEnCoche) {
+          alertasCoche++;
+          let causa = "";
+          const menorDimension = Math.min(pW, pH);
+          if (menorDimension > cocheW && menorDimension > cocheH) {
+            causa = "⚠️ EXCEPCIÓN DE ANCHO // INVIABLE PARA CONDUCIR (No entra en habitáculo)";
+          } else {
+            causa = "⚠️ EXCEPCIÓN DE LARGO // SE RECOMIENDA CORTE SIMÉTRICO";
+          }
+
+          htmlReporte += `
+            <div class="border border-red-900 bg-red-950/30 p-2 mb-2 no-print">
+              <p class="text-red-400 font-bold">[⚠️ CONFLICTO] '${p.name}' (${pW}x${pH}mm)</p>
+              <p class="text-[10px] text-gray-400 font-bold uppercase mb-1">${causa}</p>
+              <button onclick="subdividirPieza(${p.id})" class="bg-red-800 text-white font-bold text-[10px] px-2 py-1 uppercase hover:bg-red-700 transition-colors w-full text-left">
+                [ ✂️ Aplicar subdivisión simétrica de seguridad ]
+              </button>
+            </div>
+          `;
+        } else {
+          htmlReporte += `<p class="text-gray-500">[OK] '${p.name}' superó el control de habitáculo.</p>`;
+        }
+      });
+
+      // Actualizar contador visual de alertas de coche
+      document.getElementById('stat-alertas').innerText = alertasCoche;
+
+      // Ejecutar el motor matemático sanado
+      const valido = ejecutarAlgoritmoMultiCorte(tableroW, tableroH, merma);
+
+      if (!valido) {
+        htmlReporte += `<p class="text-red-500 font-bold mt-1">[❌ ERROR] Hay piezas cuyas dimensiones superan los límites del tablero base.</p>`;
+        reporteContenedor.innerHTML = htmlReporte;
+        return;
+      }
+
+      let totalPiezasUbicadas = 0; 
+      let sumaEficiencias = 0; 
+      let areaTablero = tableroW * tableroH;
+
+      tablerosSolucionados.forEach(tablero => {
+        totalPiezasUbicadas += tablero.length;
+        let areaUtilizada = tablero.reduce((sum, p) => sum + (p.w * p.h), 0);
+        sumaEficiencias += (areaUtilizada / areaTablero);
+      });
+
+      let eficienciaMedia = ((sumaEficiencias / tablerosSolucionados.length) * 100).toFixed(1);
+
+      document.getElementById('stat-eficiencia').innerText = `${eficienciaMedia}%`;
+      document.getElementById('stat-tableros').innerText = tablerosSolucionados.length;
+      document.getElementById('stat-merma').innerText = `${(merma * totalPiezasUbicadas).toFixed(0)} mm`;
+
+      htmlReporte += `<p class="text-emerald-400 font-bold mt-2">> ¡Estructura completa! Ubicadas ${totalPiezasUbicadas} piezas.</p>`;
+      htmlReporte += `<p class="text-white mt-1 font-bold">> Total tableros necesarios: ${tablerosSolucionados.length}</p>`;
+      
+      const selectorContainer = document.getElementById('selector-tableros-container');
+      if (tablerosSolucionados.length > 1) {
+        selectorContainer.classList.remove('hidden');
+      } else {
+        selectorContainer.classList.add('hidden');
+      }
+
+      indiceTableroActual = 0;
+      renderizarCanvas();
+      
+      reporteContenedor.innerHTML = htmlReporte;
+    }
+
+    function renderizarCanvas() {
+      const canvas = document.getElementById('canvas-tablero');
+      dibujarEnCanvasEspecifico(canvas, indiceTableroActual);
+      document.getElementById('label-tablero-actual').innerText = `TABLERO ${indiceTableroActual + 1} / ${tablerosSolucionados.length}`;
+    }
+
+    function dibujarEnCanvasEspecifico(canvas, indexTablero) {
+      const ctx = canvas.getContext('2d');
+      const tableroW = parseInt(document.getElementById('tablero-w').value);
+      const tableroH = parseInt(document.getElementById('tablero-h').value);
+
+      if (tablerosSolucionados.length === 0 || !tablerosSolucionados[indexTablero]) return;
+
+      const contenedorW = canvas.parentElement.clientWidth || 700; 
+      canvas.width = contenedorW;
+      canvas.height = contenedorW * (tableroH / tableroW);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const escala = canvas.width / tableroW;
+
+      ctx.fillStyle = '#b0b5b3'; 
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)'; ctx.lineWidth = 1;
+      let pasoRejilla = 100 * escala;
+      for (let i = 0; i < canvas.width; i += pasoRejilla) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
+      for (let j = 0; j < canvas.height; j += pasoRejilla) { ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke(); }
+
+      ctx.strokeStyle = '#666666'; ctx.lineWidth = 2; ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+      let piezasDelTablero = tablerosSolucionados[indexTablero];
+      piezasDelTablero.forEach(p => {
+        let hash = 0;
+        for (let i = 0; i < p.name.length; i++) hash = p.name.charCodeAt(i) + ((hash << 5) - hash);
+        ctx.fillStyle = `hsl(${Math.abs(hash) % 320}, 75%, 35%)`;
+        
+        const px = p.x * escala; const py = p.y * escala; const pw = p.w * escala; const ph = p.h * escala;
+        ctx.fillRect(px, py, pw, ph);
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.strokeRect(px, py, pw, ph);
+
+        if (pw > 40 && ph > 20) {
+          ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px monospace';
+          ctx.fillText(p.name.substring(0, 14), px + 5, py + 14);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.font = '8px monospace';
+          ctx.fillText(`${p.w}x${p.h}`, px + 5, py + 24);
+        }
+      });
+    }
+
+    function cambiarTablero(direccion) {
+      let nuevoIndice = indiceTableroActual + direccion;
+      if (nuevoIndice >= 0 && nuevoIndice < tablerosSolucionados.length) {
+        indiceTableroActual = nuevoIndice;
+        renderizarCanvas();
+      }
+    }
+
+    function imprimirInforme() {
+      const contenedorPrint = document.getElementById('seccion-impresion-bloque');
+      const tableroW = document.getElementById('tablero-w').value;
+      const tableroH = document.getElementById('tablero-h').value;
+      const merma = document.getElementById('herramienta-merma').value;
+      
+      contenedorPrint.innerHTML = '';
+      let htmlInforme = `
+        <div class="text-black p-4 border-b-4 border-black mb-6">
+          <h1 style="font-size: 26px; font-weight: 900;">HOJA DE RUTA DE CORTE // CORTAMÁSTIL</h1>
+          <p style="font-size: 11px; margin-top: 5px;"><b>Tablero:</b> ${tableroW}x${tableroH}mm | <b>Merma:</b> ${merma}mm | <b>Planchas totales:</b> ${tablerosSolucionados.length}</p>
+        </div>
+      `;
+
+      tablerosSolucionados.forEach((tablero, idx) => {
+        let areaUtilizada = tablero.reduce((sum, p) => sum + (p.w * p.h), 0);
+        let eficiencia = ((areaUtilizada / (tableroW * tableroH)) * 100).toFixed(1);
+
+        htmlInforme += `
+          <div class="pagina-tablero-print text-black mb-8">
+            <h3 style="font-size: 14px; font-weight: bold; margin-bottom: 8px;">MAPA - TABLERO ${idx + 1} de ${tablerosSolucionados.length} (${eficiencia}%)</h3>
+            <div style="margin-bottom: 15px;" class="canvas-print-wrapper">
+              <canvas id="canvas-print-${idx}" style="width: 100%; background: #b0b5b3;"></canvas>
+            </div>
+            <table style="width: 100%; font-size: 11px; text-align: left;">
+              <thead>
+                <tr style="border-b: 1px solid #000;"><th style="padding: 2px;">Pieza</th><th style="padding: 2px;">Ancho</th><th style="padding: 2px;">Alto</th><th style="padding: 2px;">Coordenadas</th></tr>
+              </thead>
+              <tbody>
+        `;
+        tablero.forEach(p => {
+          htmlInforme += `<tr style="border-b: 1px dashed #ccc;"><td style="padding: 2px; font-weight:bold;">■ ${p.name}</td><td>${p.w} mm</td><td>${p.h} mm</td><td style="color:#666;">(${p.x}, ${p.y})</td></tr>`;
+        });
+        htmlInforme += `</tbody></table></div>`;
+      });
+
+      contenedorPrint.innerHTML = htmlInforme;
+
+      setTimeout(() => {
+        tablerosSolucionados.forEach((_, idx) => {
+          const canvasPrint = document.getElementById(`canvas-print-${idx}`);
+          if (canvasPrint) dibujarEnCanvasEspecifico(canvasPrint, idx);
+        });
+        window.print();
+      }, 300);
+    }
+  </script>
+</body>
+</html>
