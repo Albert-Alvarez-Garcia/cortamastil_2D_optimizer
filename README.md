@@ -1,5 +1,8 @@
 🪵 CortaMástil // OPTIMIZADOR 2D
 
+PRÓXIMOS AVANCES:
+Conexión vía api a base de datos de vehiculos para obtener los datos reales de carga de éstos.
+
 CortaMástil es un optimizador de despiece bidimensional (algoritmo de Nesting) de estética industrial brutalista, diseñado para aficionados al bricolaje y profesionales de la madera. Permite calcular la distribución óptima de múltiples piezas sobre tableros estándar, gestionando mermas de corte y evaluando si los paneles resultantes caben físicamente en el maletero de tu coche.
 
 [!IMPORTANT]
